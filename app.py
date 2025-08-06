@@ -10,58 +10,46 @@ from utils.news import get_investment_news
 from utils.finance import plot_investment_trend
 from utils.pdf_export import export_answer_to_pdf
 
-# ---------------------- Page Config ----------------------
-st.set_page_config(page_title="InvestIQ: Your Investment Assistant", layout="wide")
+# Page config
+st.set_page_config(page_title="InvestIQ: Smarter Investing with AI", layout="wide")
 
-# ---------------------- Custom CSS ----------------------
+# Custom CSS for background + glassmorphism
 st.markdown("""
     <style>
     body {
-        background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d, #2e8b57);
-        background-size: 400% 400%;
-        animation: gradientBG 20s ease infinite;
-    }
-    @keyframes gradientBG {
-        0% {background-position: 0% 50%;}
-        50% {background-position: 100% 50%;}
-        100% {background-position: 0% 50%;}
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        background-size: cover;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     .block-container {
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(12px);
-        border-radius: 18px;
+        border-radius: 20px;
         padding: 25px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        max-width: 950px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+        max-width: 1000px;
         margin: auto;
     }
     h1 {
-        font-weight: 800;
+        color: #ffffff;
+        font-size: 3rem;
+        font-weight: bold;
         text-align: center;
+        text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+        margin-bottom: 10px;
+    }
+    h3 {
         color: #1a2a6c;
-        text-shadow: 1px 1px 4px rgba(0,0,0,0.25);
+        font-weight: bold;
+        margin-top: 20px;
+        margin-bottom: 15px;
     }
     .chat-bubble {
         margin-bottom: 20px;
-        border-radius: 16px;
+        border-radius: 20px;
         padding: 15px 20px;
-        background: rgba(245, 248, 255, 0.9);
-        box-shadow: 0 3px 12px rgba(0,0,0,0.15);
-    }
-    .chat-user { color: #163172; font-weight: bold; }
-    .chat-bot { color: #0c5460; font-weight: bold; }
-    div.stDownloadButton button {
-        background: linear-gradient(90deg, #1a2a6c, #4a90e2);
-        color: white;
-        border-radius: 25px;
-        font-size: 16px;
-        padding: 12px 20px;
-        border: none;
-    }
-    div.stDownloadButton button:hover {
-        background: linear-gradient(90deg, #163172, #2e8b57);
-        transform: scale(1.05);
-        color: #ffd700;
+        background: linear-gradient(135deg, #f1f8ff, #e6f0fa);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .stTextInput > div > div > input {
         border: 2px solid #1a2a6c;
@@ -69,132 +57,183 @@ st.markdown("""
         padding: 12px;
         font-size: 16px;
     }
-    .streamlit-expanderHeader {
-        font-weight: 600;
-        color: #1a2a6c;
-    }
     </style>
 """, unsafe_allow_html=True)
 
-
+# Title
 st.title("InvestIQ: Smarter Investing with AI")
 st.caption("Smart answers for smarter investments — Powered by Groq (Llama 4)")
 
 start_time = time.time()
 
-
+# Embedder caching
 @st.cache_resource
 def get_embedder():
     return load_embedding_model()
 
 embedder = get_embedder()
 
-# ---------------------- Sidebar ----------------------
+# Sidebar
 mode = st.sidebar.radio("Select Response Mode", ["Concise", "Detailed"])
 
+st.sidebar.markdown("### Manage Session")
+if st.sidebar.button("🗑️ Clear Queries"):
+    pdf_text = st.session_state.get("uploaded_pdf_text")
+    kb_loaded = st.session_state.get("kb_loaded", False)
+    st.session_state.clear()
+    if pdf_text:
+        st.session_state["uploaded_pdf_text"] = pdf_text
+    if kb_loaded:
+        st.session_state["kb_loaded"] = kb_loaded
+    st.rerun()
+
+if st.sidebar.button("♻️ Clear All"):
+    st.session_state.clear()
+    st.rerun()
+
+# Defaults
+if "kb_loaded" not in st.session_state:
+    st.session_state["kb_loaded"] = False
+if "uploaded_pdf_text" not in st.session_state:
+    st.session_state["uploaded_pdf_text"] = None
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+if "context" not in st.session_state:
+    st.session_state["context"] = ""
+
+# News & Trends cache
+@st.cache_data(ttl=600)
+def get_cached_news():
+    return get_investment_news()
+
+@st.cache_data(ttl=600)
+def get_cached_trend(ticker):
+    return plot_investment_trend(ticker)
+
+# Sidebar News
 st.sidebar.markdown("### 📰 Latest Investment News")
-news_items, news_context = get_investment_news()
+news_items, news_context = get_cached_news()
 for title, url in news_items:
     st.sidebar.markdown(f"- [{title}]({url})")
 
-
+# Sidebar Trends
 st.sidebar.markdown("### 📊 Current Investment Trend")
-ticker = st.sidebar.selectbox(
-    "Choose a stock/index:",
-    ["^GSPC", "^NSEI", "AAPL", "GOOGL", "BTC-USD", "TSLA"]
-)
-chart, trend_summary = plot_investment_trend(ticker)
+ticker = st.sidebar.selectbox("Choose a stock/index:",
+    ["^GSPC", "^NSEI", "AAPL", "GOOGL", "BTC-USD", "TSLA"])
+chart, trend_summary = get_cached_trend(ticker)
 if chart:
     st.sidebar.plotly_chart(chart, use_container_width=True)
+    st.session_state["trend_summary"] = trend_summary
+else:
+    st.sidebar.warning("⚠️ Could not load investment trend chart.")
+    st.session_state["trend_summary"] = ""
 
-# ---------------------- Quick Ask Buttons ----------------------
-st.markdown("### 💡 Quick Ask")
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button("📈 Market Overview"):
-        st.session_state["quick_query"] = "Give me today's market overview."
-with col2:
-    if st.button("💰 Investment Strategies"):
-        st.session_state["quick_query"] = "What are safe investment strategies for beginners?"
-with col3:
-    if st.button("🪙 Bitcoin Prediction"):
-        st.session_state["quick_query"] = "What is the Bitcoin price prediction for the next quarter?"
+# PDF Upload
+st.markdown("### 📄Add Your Own PDF")
+uploaded_file = st.file_uploader("Upload a PDF to extend InvestIQ’s knowledge", type=["pdf"])
+if uploaded_file:
+    kb_path = os.path.join("knowledge_base", uploaded_file.name)
+    with open(kb_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    text = extract_text_from_pdf(kb_path)
+    st.session_state["uploaded_pdf_text"] = text
+    chunks = [text[i:i+800] for i in range(0, len(text), 800)]
+    try:
+        add_to_index(chunks, embedder, source_file=uploaded_file.name)
+        save_index()
+        st.session_state["kb_loaded"] = True
+        st.success(f"✅ '{uploaded_file.name}' added to the Knowledge Base!")
+    except Exception:
+        st.warning("⚠️ Could not update Knowledge Base, will use PDF text directly.")
 
-# ---------------------- Chat History ----------------------
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
-
+# Chat History
 st.markdown("### 💬 Chat History")
 for chat in st.session_state["chat_history"]:
     st.markdown(f"""
         <div class='chat-bubble'>
-            <p class='chat-user'>👤 You:</p>
-            <p>{chat['query']}</p>
-            <hr style='border:0; border-top:1px solid #ddd;'>
-            <p class='chat-bot'>🤖 InvestIQ:</p>
-            <p>{chat['answer']}</p>
+            <b>👤 You:</b> {chat['query']}<br>
+            <b>🤖 InvestIQ:</b> {chat['answer']}<br>
             <small style='color:gray;'>Source: {chat['source']} • Confidence: {chat['confidence']}</small>
         </div>
     """, unsafe_allow_html=True)
 
-# ---------------------- Query Input ----------------------
+# Query Input
 with st.form(key='query_form', clear_on_submit=True):
-    query = st.text_input("🔍 Ask a research question:", value=st.session_state.get("quick_query", ""))
+    query = st.text_input("🔍 Ask a research question:")
     submit_button = st.form_submit_button(label='Submit')
-    if "quick_query" in st.session_state:
-        del st.session_state["quick_query"]
 
-# ---------------------- Handle Query ----------------------
 if submit_button and query:
     with st.spinner("InvestIQ is thinking..."):
-        context = ""
-        source = "🌐 Groq Only"
-        confidence_score = "N/A"
+        context, source, confidence_score, filename = "", "🌐 Groq Only", "N/A", "N/A"
 
-        context_chunks, similarities = retrieve(query, embedder)
-        if context_chunks:
-            highest_similarity = max(similarities)
-            if highest_similarity > 0.5:
-                context = "\n".join([chunk for chunk, _ in context_chunks])
-                source = "📚 Knowledge Base"
-                confidence_score = round(highest_similarity * 100, 2)
+        if not st.session_state["kb_loaded"]:
+            try:
+                load_index()
+                build_knowledge_base()
+                st.session_state["kb_loaded"] = True
+            except Exception:
+                st.session_state["kb_loaded"] = False
 
-        prompt = f"Context:\n{context}\n\nQuestion: {query}" if context else query
-        answer = get_groq_response(prompt, mode.lower())
+        if st.session_state["kb_loaded"]:
+            context_chunks, similarities = retrieve(query, embedder)
+            if context_chunks and similarities:
+                highest_similarity = max(similarities)
+                if highest_similarity > 0.50:
+                    chunk_texts = [chunk for chunk, fname in context_chunks]
+                    context = "\n".join(chunk_texts)
+                    confidence_score = round(highest_similarity*100,2)
+                    filename = context_chunks[0][1]
+                    source = "🟣 Hybrid Answer (RAG)"
 
-        # Typing animation
-        placeholder = st.empty()
-        typed = ""
-        for char in answer:
-            typed += char
-            placeholder.markdown(f"<div class='chat-bubble'><p class='chat-bot'>🤖 {typed}</p></div>", unsafe_allow_html=True)
-            time.sleep(0.015)
+        if not context and st.session_state.get("trend_summary") and ticker.lower().split("-")[0] in query.lower():
+            context = st.session_state["trend_summary"]
+            source = "📊 Live Market Trend"
+            confidence_score = 85.0
 
+        if not context and ("news" in query.lower() or "market" in query.lower() or "investment" in query.lower()):
+            if news_context:
+                context = f"Latest investment headlines:\n{news_context}"
+                source = "📰 Live Investment News"
+                confidence_score = 80.0
+
+        if not context:
+            web_context = search_web(query)
+            if web_context:
+                context = web_context
+                source = "🌐 Hybrid Answer (Web Search)"
+                confidence_score = 70.0
+
+        if not context and st.session_state.get("uploaded_pdf_text"):
+            context = st.session_state["uploaded_pdf_text"][:1500]
+            source = "📄 Uploaded PDF Fallback"
+            confidence_score = "N/A"
+
+        if context:
+            prompt = f"Context:\n{context}\n\nQuestion: {query}"
+            answer = get_groq_response(prompt, mode.lower())
+        else:
+            answer = get_groq_response(query, mode.lower())
+
+        st.session_state["context"] = context
         st.session_state["chat_history"].append({
-            "query": query,
-            "answer": answer,
-            "source": source,
-            "confidence": confidence_score,
+            "query": query, "answer": answer, "source": source,
+            "confidence": confidence_score, "filename": filename
         })
         st.rerun()
 
-# ---------------------- Export PDF ----------------------
+# Context Preview
+if st.session_state["context"] and st.session_state["chat_history"]:
+    with st.expander("📌 See Context Used"):
+        st.text_area("Preview", st.session_state["context"][:800], height=200, disabled=True)
+
+# Export to PDF
 if st.session_state["chat_history"]:
     last_chat = st.session_state["chat_history"][-1]
-    filename_input = st.text_input("📄 Save PDF as:", "investiq_answer.pdf")
-    if st.button("⬇️ Export Last Answer"):
-        pdf_path = export_answer_to_pdf(
-            query=last_chat["query"],
-            answer=last_chat["answer"],
-            source=last_chat["source"],
-            filename=filename_input
-        )
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                label="📥 Download PDF",
-                data=f,
-                file_name=filename_input,
-                mime="application/pdf"
-            )
+    pdf_path = export_answer_to_pdf(
+        query=last_chat["query"], answer=last_chat["answer"],
+        source=last_chat["source"], filename="investiq_answer.pdf"
+    )
+    with open(pdf_path, "rb") as f:
+        st.download_button("⬇️ Download Last Answer as PDF", f, "investiq_answer.pdf", "application/pdf")
 
 st.sidebar.info(f"⏱️ App loaded in {time.time() - start_time:.2f} seconds")
