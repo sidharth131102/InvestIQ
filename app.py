@@ -205,8 +205,8 @@ st.markdown("""
 # Process query or quick ask
 if submit_button and query:
     user_query = query
-elif "quick_query" in st.query_params():
-    user_query = st.query_params()["quick_query"][0]
+elif "quick_query" in st.query_params:
+    user_query = st.query_params["quick_query"][0]
 else:
     user_query = None
 
