@@ -1,0 +1,25 @@
+# Core app
+streamlit>=1.30.0
+python-dotenv>=1.0.0
+
+# Groq LLM API
+groq>=0.4.0
+
+# Embeddings / RAG
+sentence-transformers>=2.2.2
+faiss-cpu>=1.7.4
+
+# PDF processing
+pdfplumber>=0.10.3
+
+# Web search + News
+requests>=2.31.0
+
+# Finance data + interactive charts
+yfinance>=0.2.36
+plotly>=5.22.0
+
+# Optional: progress bars and utilities
+tqdm>=4.66.1
+
+fpdf2>=2.7.8
