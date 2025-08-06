@@ -1,9 +1,8 @@
 import requests
 import os
 import json
-from dotenv import load_dotenv
-load_dotenv()
-SERPER_API_KEY = os.getenv("SERPER_API_KEY")
+import streamlit as st
+SERPER_API_KEY = st.secrets["SERPER_API_KEY"]
 
 def search_web(query: str) -> str:
     """

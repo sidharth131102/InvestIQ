@@ -1,6 +1,5 @@
 import os
 import time
-from dotenv import load_dotenv
 import streamlit as st
 from models.llm import get_groq_response
 from models.embeddings import load_embedding_model
@@ -12,7 +11,6 @@ from utils.finance import plot_investment_trend
 from utils.pdf_export import export_answer_to_pdf
 
 # Load environment variables
-load_dotenv()
 
 # Page config
 st.set_page_config(page_title="InvestIQ: Your Investment Assistant", layout="wide")
