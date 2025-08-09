@@ -175,23 +175,23 @@ for chat in st.session_state["chat_history"]:
 with st.form(key='query_form', clear_on_submit=True):
     query = st.text_input("🔍 Ask a research question:")
     submit_button = st.form_submit_button(label='Submit')
-# Quick Ask Section
-st.markdown("### ⚡ Quick Ask")
-col1, col2, col3 = st.columns(3)
+# # Quick Ask Section
+# st.markdown("### ⚡ Quick Ask")
+# col1, col2, col3 = st.columns(3)
 
-user_query = None
+# user_query = None
 
-with col1:
-    if st.button("📈 Latest Market Trends"):
-        user_query = "What are the latest stock market trends today?"
+# with col1:
+#     if st.button("📈 Latest Market Trends"):
+#         user_query = "What are the latest stock market trends today?"
 
-with col2:
-    if st.button("💡 Best Investment Tips"):
-        user_query = "Give me top investment tips for beginners."
+# with col2:
+#     if st.button("💡 Best Investment Tips"):
+#         user_query = "Give me top investment tips for beginners."
 
-with col3:
-    if st.button("🌍 Global Market News"):
-        user_query = "What are the biggest global investment news updates?"
+# with col3:
+#     if st.button("🌍 Global Market News"):
+#         user_query = "What are the biggest global investment news updates?"
 
 
 if submit_button and query:
@@ -255,8 +255,15 @@ if submit_button and query:
 
 # Context Preview
 if st.session_state["context"] and st.session_state["chat_history"]:
-    with st.expander("📌 See Context Used"):
-        st.text_area("Preview", st.session_state["context"][:800], height=200, disabled=True)
+    last_chat = st.session_state["chat_history"][-1]
+    if any(x in last_chat["source"] for x in ["🟣 Hybrid Answer", "📄 Uploaded PDF Fallback", "📰 Live Investment News", "📊 Live Market Trend"]):
+        st.markdown("**Context Used (Preview):**")
+        preview = st.session_state["context"][:500]
+        st.text_area("Preview", preview, height=200, disabled=True)
+        # Show filename if available
+        if "filename" in last_chat:
+            st.caption(f"Source File: {last_chat['filename']}")
+
 
 # Export to PDF
 if st.session_state["chat_history"]:
